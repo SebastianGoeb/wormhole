@@ -1,4 +1,4 @@
-use leptos::{logging, prelude::*};
+use leptos::{logging, prelude::*, reactive::spawn_local};
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -25,8 +25,6 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
-    logging::log!("where do I run?");
-
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
@@ -36,7 +34,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/wormhole.css" />
 
         // sets the document title
-        <Title text="Welcome to Leptos" />
+        <Title text="Bro, welcome to Leptos" />
 
         // content for this welcome page
         <Router>
@@ -49,15 +47,26 @@ pub fn App() -> impl IntoView {
     }
 }
 
+#[server]
+async fn log_something(message: String) -> Result<(), ServerFnError> {
+    logging::log!("{message}");
+    Ok(())
+}
+
 /// Renders the home page of your application.
 #[component]
 fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
-
     view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+        <h1>"Welcome to Wormhole!"</h1>
+
+        <input
+            type="text"
+            on:input=move |ev| {
+                let v = event_target_value(&ev);
+                spawn_local(async {
+                    log_something(v).await;
+                });
+            }
+        />
     }
 }
