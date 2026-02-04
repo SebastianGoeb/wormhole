@@ -1,4 +1,5 @@
-use leptos::{prelude::*, reactive::spawn_local};
+use cfg_if::cfg_if;
+use leptos::{logging, prelude::*, reactive::spawn_local};
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -6,8 +7,11 @@ use leptos_router::{
 };
 
 
-#[cfg(feature = "ssr")]
-use crate::state::AppState;
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        use crate::state::AppState;
+    }
+}
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -53,12 +57,6 @@ pub fn App() -> impl IntoView {
 }
 
 #[server]
-async fn update_and_await_value(message: String) -> Result<String, ServerFnError> {
-    update(message.clone()).await?;
-    await_value(message).await
-}
-
-#[server]
 async fn update(message: String) -> Result<(), ServerFnError> {
     let state = expect_context::<AppState>();
     let sender = state.value_tx.clone();
@@ -73,14 +71,14 @@ async fn update(message: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
-async fn get_value() -> Result<String, ServerFnError> {
+async fn get_current_value() -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
     let value = state.value_tx.subscribe().borrow().clone();
     Ok(value)
 }
 
 #[server]
-async fn await_value(last_seen: String) -> Result<String, ServerFnError> {
+async fn await_new_value(last_seen: String) -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
     let mut rx = state.value_tx.subscribe();
 
@@ -107,8 +105,8 @@ fn HomePage() -> impl IntoView {
         move || value.get(),
         move |last_seen| async move {
             return match last_seen {
-                None =>  get_value().await.ok(),
-                Some(last_seen) => await_value(last_seen).await.ok()
+                None =>  get_current_value().await.ok(),
+                Some(last_seen) => Some(await_new_value(last_seen.clone()).await.unwrap_or_else(|_| last_seen))
             }
         },
     );
@@ -120,16 +118,18 @@ fn HomePage() -> impl IntoView {
         }
     });
 
+    let update_action = Action::new(|from_input: &String| {
+        let from_input = from_input.clone();
+        async move { update(from_input).await }
+    });
+
     view! {
         <div class="grid min-h-dvh place-items-center">
             <input
                 class="w-[50dvmin] h-[50dvmin] rounded-full bg-transparent border-10 border-amber-600 text-2xl text-orange-300 text-center"
                 on:input=move |ev| {
                     let value = event_target_value(&ev);
-                    spawn_local(async move {
-                        let new_value = update_and_await_value(value).await.ok();
-                        set_value.set(new_value.clone());
-                    });
+                    update_action.dispatch(value.clone());
                 }
                 prop:value=move || { value }
             />
