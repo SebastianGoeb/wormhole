@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use leptos::{logging, prelude::*, reactive::spawn_local};
+use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -9,7 +9,8 @@ use leptos_router::{
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use crate::state::AppState;
+        use crate::user::*;
+        use crate::state::*;
     }
 }
 
@@ -56,43 +57,87 @@ pub fn App() -> impl IntoView {
     }
 }
 
+
 #[server]
 async fn update(message: String) -> Result<(), ServerFnError> {
     let state = expect_context::<AppState>();
-    let sender = state.value_tx.clone();
-    sender.send_if_modified(|state| {
-        if *state != message {
-            *state = message;
-            return true;
-        }
-        return false;
-    });
+
+    state.value_service.update(UserId(DEFAULT_USER.to_string()), message).await;
+
+    // let mut map = state.txs.lock().await;
+
+    // let tx_weak = map.entry(UserId(DEFAULT_USER.to_string())).or_insert_with(|| {
+    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
+    //     let sdr = Arc::new(tx);
+    //     Arc::downgrade(&sdr)
+    // });
+
+    // let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
+    // let sdr = Arc::new(tx);
+    // map.insert(UserId(DEFAULT_USER.to_string()), Arc::downgrade(&sdr));
+
+    // let tx = state.txs.get_with_by_ref(DEFAULT_USER, async move {
+    //     log!("update: must create new channel first");
+    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
+    //     NamedSender {name: COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed), tx}
+    // }).await;
+
+    // log!("updating {}", tx.name);
+    
+    // tx.tx.send_if_modified(|state| {
+    //     if *state != message {
+    //         *state = message;
+    //         return true;
+    //     }
+    //     return false;
+    // });
+
+    // // state.sender_cache.remove(DEFAULT_USER);
+    // state.sender_cache.insert(DEFAULT_USER.to_string(), tx).await;
+
     Ok(())
 }
 
 #[server]
 async fn get_current_value() -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    let value = state.value_tx.subscribe().borrow().clone();
-    Ok(value)
+    state.value_service.get_current_value(UserId(DEFAULT_USER.to_string())).await
 }
 
 #[server]
 async fn await_new_value(last_seen: String) -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    let mut rx = state.value_tx.subscribe();
+    state.value_service.await_different_value(UserId(DEFAULT_USER.to_string()), last_seen).await
 
-    loop {
-        let current = rx.borrow().clone();
-        if current != last_seen {
-            return Ok(current);
-        }
+    // let (tx, rx) = oneshot::channel::<Option<String>>();
+    // state.command_tx.send(Command::AwaitDifferentValue(UserId(DEFAULT_USER.to_string()), last_seen, tx));
+    // let value = rx.await.map_err(|_| ServerFnError::new("the sender dropped"))?; // TODO message
+
+    // let tx = state.sender_cache.get_with_by_ref(DEFAULT_USER, async move {
+    //     println!("await: must create new channel first");
+    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
+    //     NamedSender {name: COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed), tx}
+    // }).await;
+
+    // log!("awaiting {}", tx.name);
+    
+    // let mut rx = tx.tx.subscribe();
+
+    // loop {
+    //     let current = rx.borrow_and_update().clone();
+    //     if current == "" {
+    //         log!("received '' on {}", tx.name)
+    //     }
+
+    //     if current != last_seen {
+    //         return Ok(current);
+    //     }
         
-        // Wait for the next update.
-        // If an update happened between the check above and this line,
-        // .changed() resolves immediately.
-        rx.changed().await.map_err(|_| ServerFnError::new("Channel closed"))?;
-    }
+    //     // Wait for the next update.
+    //     // If an update happened between the check above and this line,
+    //     // .changed() resolves immediately.
+    //     rx.changed().await.map_err(|_| ServerFnError::new("Channel closed"))?;
+    // }
 }
 
 /// Renders the home page of your application.
@@ -105,7 +150,7 @@ fn HomePage() -> impl IntoView {
         move || value.get(),
         move |last_seen| async move {
             return match last_seen {
-                None =>  get_current_value().await.ok(),
+                None =>  get_current_value().await.ok().or(Some("".to_string())),
                 Some(last_seen) => Some(await_new_value(last_seen.clone()).await.unwrap_or_else(|_| last_seen))
             }
         },

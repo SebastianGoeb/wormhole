@@ -16,6 +16,9 @@ leptos_meta = { version = "0.8.0" }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 wasm-bindgen = { version = "0.2.106", optional = true }
 cfg-if = "1.0.4"
+moka = { version = "0.12.13", features = ["future"], optional = true }
+tokio-util = { version = "0.7.18", features = ["time"] }
+tokio-stream = "0.1.18"
 
 [features]
 hydrate = [
@@ -27,6 +30,7 @@ ssr = [
     "dep:axum",
     "dep:tokio",
     "dep:leptos_axum",
+    "dep:moka",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",

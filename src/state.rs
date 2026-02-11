@@ -1,13 +1,16 @@
-use cfg_if::cfg_if;
+use std::sync::Arc;
 
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        use tokio::sync::watch;
+use crate::value::ValueService;
 
-        #[derive(Debug, Clone)]
-        pub struct AppState {
-            pub value_rx: watch::Receiver<String>,
-            pub value_tx: watch::Sender<String>
+#[derive(Clone)]
+pub struct AppState {
+    pub value_service: Arc<ValueService>,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            value_service: Arc::new(ValueService::new()),
         }
     }
 }
