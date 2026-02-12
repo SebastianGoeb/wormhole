@@ -61,83 +61,19 @@ pub fn App() -> impl IntoView {
 #[server]
 async fn update(message: String) -> Result<(), ServerFnError> {
     let state = expect_context::<AppState>();
-
-    state.value_service.update(UserId(DEFAULT_USER.to_string()), message).await;
-
-    // let mut map = state.txs.lock().await;
-
-    // let tx_weak = map.entry(UserId(DEFAULT_USER.to_string())).or_insert_with(|| {
-    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
-    //     let sdr = Arc::new(tx);
-    //     Arc::downgrade(&sdr)
-    // });
-
-    // let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
-    // let sdr = Arc::new(tx);
-    // map.insert(UserId(DEFAULT_USER.to_string()), Arc::downgrade(&sdr));
-
-    // let tx = state.txs.get_with_by_ref(DEFAULT_USER, async move {
-    //     log!("update: must create new channel first");
-    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
-    //     NamedSender {name: COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed), tx}
-    // }).await;
-
-    // log!("updating {}", tx.name);
-    
-    // tx.tx.send_if_modified(|state| {
-    //     if *state != message {
-    //         *state = message;
-    //         return true;
-    //     }
-    //     return false;
-    // });
-
-    // // state.sender_cache.remove(DEFAULT_USER);
-    // state.sender_cache.insert(DEFAULT_USER.to_string(), tx).await;
-
-    Ok(())
+    Ok(state.value_service.update(UserId(DEFAULT_USER.to_string()), message).await?)
 }
 
 #[server]
 async fn get_current_value() -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    state.value_service.get_current_value(UserId(DEFAULT_USER.to_string())).await
+    Ok(state.value_service.get_current_value(UserId(DEFAULT_USER.to_string())).await?)
 }
 
 #[server]
 async fn await_new_value(last_seen: String) -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    state.value_service.await_different_value(UserId(DEFAULT_USER.to_string()), last_seen).await
-
-    // let (tx, rx) = oneshot::channel::<Option<String>>();
-    // state.command_tx.send(Command::AwaitDifferentValue(UserId(DEFAULT_USER.to_string()), last_seen, tx));
-    // let value = rx.await.map_err(|_| ServerFnError::new("the sender dropped"))?; // TODO message
-
-    // let tx = state.sender_cache.get_with_by_ref(DEFAULT_USER, async move {
-    //     println!("await: must create new channel first");
-    //     let (tx, _rx) = watch::channel(DEFAULT_VALUE.to_string());
-    //     NamedSender {name: COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed), tx}
-    // }).await;
-
-    // log!("awaiting {}", tx.name);
-    
-    // let mut rx = tx.tx.subscribe();
-
-    // loop {
-    //     let current = rx.borrow_and_update().clone();
-    //     if current == "" {
-    //         log!("received '' on {}", tx.name)
-    //     }
-
-    //     if current != last_seen {
-    //         return Ok(current);
-    //     }
-        
-    //     // Wait for the next update.
-    //     // If an update happened between the check above and this line,
-    //     // .changed() resolves immediately.
-    //     rx.changed().await.map_err(|_| ServerFnError::new("Channel closed"))?;
-    // }
+    Ok(state.value_service.await_different_value(UserId(DEFAULT_USER.to_string()), last_seen).await?)
 }
 
 /// Renders the home page of your application.

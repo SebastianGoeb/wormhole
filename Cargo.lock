@@ -2614,6 +2614,7 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "moka",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
  "tokio-util",
