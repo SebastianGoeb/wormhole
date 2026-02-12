@@ -1,5 +1,14 @@
 pub mod app;
 
+#[cfg(feature = "ssr")]
+pub mod user;
+
+#[cfg(feature = "ssr")]
+pub mod value;
+
+#[cfg(feature = "ssr")]
+pub mod state;
+
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
