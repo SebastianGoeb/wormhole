@@ -3,6 +3,19 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  fmt:
+      name: Rustfmt
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - name: Enforce leptos formatting
+        run: leptosfmt --check .
+      - name: Enforce rust formatting
+        run: cargo fmt --check
+
   build-test-deploy:
     runs-on: ubuntu-latest
 
