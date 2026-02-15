@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use thiserror::Error;
-use tokio::sync::{mpsc, oneshot, watch};
-use std::time::Duration;
-use tokio_util::time::{self, delay_queue};
-use tokio;
-use tokio_stream::StreamExt;
 use leptos::logging::*;
+use std::time::Duration;
+use thiserror::Error;
+use tokio;
+use tokio::sync::{mpsc, oneshot, watch};
+use tokio_stream::StreamExt;
+use tokio_util::time::{self, delay_queue};
 
 use crate::user::UserId;
 
@@ -20,19 +20,18 @@ enum Command {
 pub const DEFAULT_VALUE: &str = "";
 
 #[derive(Debug, Clone, Error)]
-pub enum ValueServiceError{
+pub enum ValueServiceError {
     #[error("worker shut down")]
     WorkerShutDown,
     #[error("worker did not respond")]
-    WorkerDidNotRespond
+    WorkerDidNotRespond,
 }
 
 struct ValueServiceWorker {
     command_rx: mpsc::Receiver<Command>,
     value_txs: HashMap<UserId, watch::Sender<String>>,
     expiration_entries: HashMap<UserId, delay_queue::Key>,
-    expirations: time::DelayQueue<UserId>
-
+    expirations: time::DelayQueue<UserId>,
 }
 
 impl ValueServiceWorker {
@@ -66,8 +65,10 @@ impl ValueServiceWorker {
 
     fn handle_update(&mut self, user_id: UserId, value: String) {
         log!("updating curr val of {} to {}", &user_id.0, &value);
-        let tx = self.value_txs.entry(user_id.clone())
-            .or_insert_with(|| { watch::channel::<String>(value.clone()).0 })
+        let tx = self
+            .value_txs
+            .entry(user_id.clone())
+            .or_insert_with(|| watch::channel::<String>(value.clone()).0)
             .clone();
 
         tx.send_if_modified(|state| {
@@ -85,36 +86,53 @@ impl ValueServiceWorker {
             log!("removing expiration entry");
             self.expirations.reset(&key, Duration::from_secs(5));
         } else {
-            let delay_key = self.expirations.insert(user_id.clone(), Duration::from_secs(5));
+            let delay_key = self
+                .expirations
+                .insert(user_id.clone(), Duration::from_secs(5));
             self.expiration_entries.insert(user_id, delay_key);
         }
     }
 
     fn handle_get_current_value(&self, user_id: UserId, sender: oneshot::Sender<String>) {
         log!("getting curr val of {}", &user_id.0);
-        let value = self.value_txs.get(&user_id)
+        let value = self
+            .value_txs
+            .get(&user_id)
             .map(|tx| tx.subscribe().borrow().clone())
             .unwrap_or("".to_string());
         log!("current value is {:?}", &value);
-        sender.send(value).unwrap_or_else(|_| warn!("client disconnected"));
+        sender
+            .send(value)
+            .unwrap_or_else(|_| warn!("client disconnected"));
     }
 
-    fn handle_await_different_value(&mut self, user_id: UserId, last_seen: String, sender: oneshot::Sender<String>) {
-        let tx = self.value_txs.entry(user_id.clone())
-            .or_insert_with(|| { watch::channel::<String>("".to_string()).0 })
+    fn handle_await_different_value(
+        &mut self,
+        user_id: UserId,
+        last_seen: String,
+        sender: oneshot::Sender<String>,
+    ) {
+        let tx = self
+            .value_txs
+            .entry(user_id.clone())
+            .or_insert_with(|| watch::channel::<String>("".to_string()).0)
             .clone();
-        
+
         tokio::spawn(async move {
             let mut rx = tx.subscribe();
             loop {
                 let current = rx.borrow_and_update().clone();
                 if current != last_seen {
                     log!("received different value {:?}", &current);
-                    sender.send(current).unwrap_or_else(|_| warn!("client disconnected"));
+                    sender
+                        .send(current)
+                        .unwrap_or_else(|_| warn!("client disconnected"));
                     break;
                 }
                 log!("received x {:?}", &current);
-                rx.changed().await.unwrap_or_else(|_| warn!("channel closed"));
+                rx.changed()
+                    .await
+                    .unwrap_or_else(|_| warn!("channel closed"));
             }
         });
     }
@@ -129,8 +147,11 @@ impl ValueServiceWorker {
                 if tx.receiver_count() == 0 {
                     self.value_txs.remove(&uid);
                 }
-            },
-            None => warn!("tried to expire value for uid {:?}, but no value was found, skipping.", &uid),
+            }
+            None => warn!(
+                "tried to expire value for uid {:?}, but no value was found, skipping.",
+                &uid
+            ),
         }
     }
 }
@@ -148,18 +169,31 @@ impl ValueService {
     }
 
     pub async fn update(&self, user_id: UserId, value: String) -> Result<(), ValueServiceError> {
-        self.command_tx.send(Command::Update(user_id, value)).await.map_err(|_| ValueServiceError::WorkerShutDown)
+        self.command_tx
+            .send(Command::Update(user_id, value))
+            .await
+            .map_err(|_| ValueServiceError::WorkerShutDown)
     }
 
     pub async fn get_current_value(&self, user_id: UserId) -> Result<String, ValueServiceError> {
         let (tx, rx) = oneshot::channel();
-        self.command_tx.send(Command::GetCurrentValue(user_id, tx)).await.map_err(|_| ValueServiceError::WorkerShutDown)?;
+        self.command_tx
+            .send(Command::GetCurrentValue(user_id, tx))
+            .await
+            .map_err(|_| ValueServiceError::WorkerShutDown)?;
         rx.await.map_err(|_| ValueServiceError::WorkerDidNotRespond)
     }
 
-    pub async fn await_different_value(&self, user_id: UserId, last_seen: String) -> Result<String, ValueServiceError> {
+    pub async fn await_different_value(
+        &self,
+        user_id: UserId,
+        last_seen: String,
+    ) -> Result<String, ValueServiceError> {
         let (tx, rx) = oneshot::channel();
-        self.command_tx.send(Command::AwaitDifferentValue(user_id, last_seen, tx)).await.map_err(|_| ValueServiceError::WorkerShutDown)?;
+        self.command_tx
+            .send(Command::AwaitDifferentValue(user_id, last_seen, tx))
+            .await
+            .map_err(|_| ValueServiceError::WorkerShutDown)?;
         rx.await.map_err(|_| ValueServiceError::WorkerDidNotRespond)
     }
 }
