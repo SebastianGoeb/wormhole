@@ -92,14 +92,14 @@ fn HomePage() -> impl IntoView {
     let wait = Resource::new(
         move || value.get(),
         move |last_seen| async move {
-            return match last_seen {
-                None => get_current_value().await.ok().or(Some("".to_string())),
+            match last_seen {
+                None => get_current_value().await.ok().or(Some(String::new())),
                 Some(last_seen) => Some(
                     await_new_value(last_seen.clone())
                         .await
-                        .unwrap_or_else(|_| last_seen),
+                        .unwrap_or(last_seen),
                 ),
-            };
+            }
         },
     );
 
@@ -121,7 +121,7 @@ fn HomePage() -> impl IntoView {
                 class="w-[50dvmin] h-[50dvmin] rounded-full bg-transparent border-10 border-amber-600 text-2xl text-orange-300 text-center"
                 on:input=move |ev| {
                     let value = event_target_value(&ev);
-                    update_action.dispatch(value.clone());
+                    update_action.dispatch(value);
                 }
                 prop:value=move || { value }
             />
