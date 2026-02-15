@@ -36,9 +36,9 @@ jobs:
       - name: Linting
         run: cargo clippy -- -D warnings
 
-  build-test-deploy:
+  security:
+    name: Security
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -46,12 +46,17 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
-
       - name: Security check
         run: cargo audit
 
-      - name: Dependency policy check
-        run: cargo deny check
+  build-test-deploy:
+    name: Build, Test, Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
       - name: Test coverage gate
         run: cargo tarpaulin --fail-under 80
