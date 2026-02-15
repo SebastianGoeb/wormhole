@@ -7,38 +7,39 @@ jobs:
       name: Formatting
       runs-on: ubuntu-latest
       steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
-      - run: cargo install cargo-binstall
-      - run: cargo binstall leptosfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Enforce leptos formatting
-        run: leptosfmt --check .
-      - name: Enforce rust formatting
-        run: cargo fmt --check
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt
+        - run: cargo install cargo-binstall
+        - run: cargo binstall leptosfmt
+        - uses: Swatinem/rust-cache@v2
+        - name: Enforce leptos formatting
+          run: leptosfmt --check .
+        - name: Enforce rust formatting
+          run: cargo fmt --check
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@nightly
-      with:
-        components: clippy
-    - uses: Swatinem/rust-cache@v2
-    - name: Linting
-      run: cargo clippy -- -D warnings
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Linting
+        run: cargo clippy -- -D warnings
 
   build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install cargo-audit
-        run: cargo binstall cargo-audit
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-binstall
+      -  run: cargo binstall cargo-audit
+      - uses: Swatinem/rust-cache@v2
 
       - name: Security check
         run: cargo audit
