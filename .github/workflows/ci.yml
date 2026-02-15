@@ -15,9 +15,9 @@ jobs:
         - uses: dtolnay/rust-toolchain@stable
           with:
             components: rustfmt
+        - uses: Swatinem/rust-cache@v2
         - run: cargo install cargo-binstall
         - run: cargo binstall leptosfmt
-        - uses: Swatinem/rust-cache@v2
         - name: Enforce leptos formatting
           run: leptosfmt --check .
         - name: Enforce rust formatting
@@ -41,9 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: cargo install cargo-binstall
       -  run: cargo binstall cargo-audit
-      - uses: Swatinem/rust-cache@v2
 
       - name: Security check
         run: cargo audit
