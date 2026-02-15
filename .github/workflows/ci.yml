@@ -11,6 +11,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+      - run: cargo install cargo-binstall
+      - run: cargo binstall leptosfmt
+      - uses: Swatinem/rust-cache@v2
       - name: Enforce leptos formatting
         run: leptosfmt --check .
       - name: Enforce rust formatting
