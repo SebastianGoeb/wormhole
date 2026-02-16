@@ -65,8 +65,21 @@ jobs:
         with:
           tool: cargo-tarpaulin
 
-      - name: Test coverage gate
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Run Unit Tests
+        run: cargo test --all-features
+      - name: Enforce Coverage
         run: cargo tarpaulin --fail-under 80
+
+      - name: Install End-to-End Dependencies
+        working-directory: end2end
+        run: npm ci
+
+      - name: Run End-to-End Tests
+        run: cargo leptos end-to-end
 
       - name: Build using cargo chef
         run: |
