@@ -63,7 +63,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-tarpaulin
+          tool: cargo-leptos, cargo-tarpaulin
 
       - uses: actions/setup-node@v6
         with:
