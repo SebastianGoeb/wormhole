@@ -118,6 +118,7 @@ fn HomePage() -> impl IntoView {
     view! {
         <div class="grid min-h-dvh place-items-center">
             <input
+                id="main-input"
                 class="w-[50dvmin] h-[50dvmin] rounded-full bg-transparent border-10 border-amber-600 text-2xl text-orange-300 text-center"
                 on:input=move |ev| {
                     let value = event_target_value(&ev);
