@@ -19,7 +19,7 @@ enum Command {
 
 pub const DEFAULT_VALUE: &str = "";
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, Error, PartialEq)]
 pub enum ValueServiceError {
     #[error("worker shut down")]
     WorkerShutDown,
@@ -196,4 +196,65 @@ impl ValueService {
             .map_err(|_| ValueServiceError::WorkerShutDown)?;
         rx.await.map_err(|_| ValueServiceError::WorkerDidNotRespond)
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::user::DEFAULT_USER;
+    use super::*;
+
+    #[tokio::test]
+    async fn get_value_should_return_empty_by_default() {
+        let svc = ValueService::new();
+        let value = svc.get_current_value(UserId(DEFAULT_USER.to_string())).await;
+        assert_eq!(value, Ok(String::new()));
+    }
+
+    #[tokio::test]
+    async fn update_should_set_initial_value() -> Result<(), ValueServiceError> {
+        let svc = ValueService::new();
+
+        svc.update(UserId(DEFAULT_USER.to_string()), String::from("msg")).await?;
+        let value = svc.get_current_value(UserId(DEFAULT_USER.to_string())).await?;
+        assert_eq!(value, "msg");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn updates_should_be_pushed_to_all_waiting_clients() -> Result<(), ValueServiceError> {
+        let svc = ValueService::new();
+        svc.update(UserId(DEFAULT_USER.to_string()), String::from("msg")).await?;
+
+        let client_1 = svc.await_different_value(UserId(DEFAULT_USER.to_string()), String::from("msg"));
+        let client_2 = svc.await_different_value(UserId(DEFAULT_USER.to_string()), String::from("msg"));
+
+        svc.update(UserId(DEFAULT_USER.to_string()), String::from("new msg")).await?;
+
+        assert_eq!(client_1.await?, "new msg");
+        assert_eq!(client_2.await?, "new msg");
+
+        Ok(())
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn value_should_expire() -> Result<(), ValueServiceError> {
+        let svc = ValueService::new();
+        svc.update(UserId(DEFAULT_USER.to_string()), String::from("msg")).await?;
+
+        tokio::time::sleep(Duration::from_secs(4)).await;
+
+        let value = svc.get_current_value(UserId(DEFAULT_USER.to_string())).await?;
+        assert_eq!(value, "msg");
+
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        let value = svc.get_current_value(UserId(DEFAULT_USER.to_string())).await?;
+        assert_eq!(value, "");
+
+        Ok(())
+    }
+
+    // TODO: no-op updates should not be pushed to clients
 }
