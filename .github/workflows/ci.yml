@@ -60,10 +60,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-leptos, cargo-tarpaulin
+          tool: cargo-leptos
       - name: Run Unit Tests and Enforce Coverage
         run: cargo llvm-cov --workspace --all-features --summary-only --fail-under-lines 80
 
