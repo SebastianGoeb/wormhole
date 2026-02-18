@@ -1,11 +1,10 @@
 use cfg_if::cfg_if;
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
+use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    components::{Route, Router, Routes},
     StaticSegment,
+    components::{Route, Router, Routes},
 };
-
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -57,23 +56,31 @@ pub fn App() -> impl IntoView {
     }
 }
 
-
 #[server]
 async fn update(message: String) -> Result<(), ServerFnError> {
     let state = expect_context::<AppState>();
-    Ok(state.value_service.update(UserId(DEFAULT_USER.to_string()), message).await?)
+    Ok(state
+        .value_service
+        .update(UserId(DEFAULT_USER.to_string()), message)
+        .await?)
 }
 
 #[server]
 async fn get_current_value() -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    Ok(state.value_service.get_current_value(UserId(DEFAULT_USER.to_string())).await?)
+    Ok(state
+        .value_service
+        .get_current_value(UserId(DEFAULT_USER.to_string()))
+        .await?)
 }
 
 #[server]
 async fn await_new_value(last_seen: String) -> Result<String, ServerFnError> {
     let state = expect_context::<AppState>();
-    Ok(state.value_service.await_different_value(UserId(DEFAULT_USER.to_string()), last_seen).await?)
+    Ok(state
+        .value_service
+        .await_different_value(UserId(DEFAULT_USER.to_string()), last_seen)
+        .await?)
 }
 
 /// Renders the home page of your application.
@@ -85,9 +92,13 @@ fn HomePage() -> impl IntoView {
     let wait = Resource::new(
         move || value.get(),
         move |last_seen| async move {
-            return match last_seen {
-                None =>  get_current_value().await.ok().or(Some("".to_string())),
-                Some(last_seen) => Some(await_new_value(last_seen.clone()).await.unwrap_or_else(|_| last_seen))
+            match last_seen {
+                None => get_current_value().await.ok().or(Some(String::new())),
+                Some(last_seen) => Some(
+                    await_new_value(last_seen.clone())
+                        .await
+                        .unwrap_or(last_seen),
+                ),
             }
         },
     );
@@ -107,10 +118,11 @@ fn HomePage() -> impl IntoView {
     view! {
         <div class="grid min-h-dvh place-items-center">
             <input
+                id="main-input"
                 class="w-[50dvmin] h-[50dvmin] rounded-full bg-transparent border-10 border-amber-600 text-2xl text-orange-300 text-center"
                 on:input=move |ev| {
                     let value = event_target_value(&ev);
-                    update_action.dispatch(value.clone());
+                    update_action.dispatch(value);
                 }
                 prop:value=move || { value }
             />

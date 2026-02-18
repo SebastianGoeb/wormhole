@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  fmt:
+      name: Formatting
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt
+        - uses: taiki-e/install-action@v2
+          with:
+            tool: leptosfmt
+        - uses: Swatinem/rust-cache@v2
+        - name: Enforce leptos formatting
+          run: leptosfmt --check .
+        - name: Enforce rust formatting
+          run: cargo fmt --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Linting
+        run: cargo clippy -- -D warnings
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Security check
+        run: cargo audit
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
+      - name: Run Unit Tests and Enforce Coverage
+        run: cargo llvm-cov --workspace --all-features --summary-only --fail-under-lines 80
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+      - name: Install End-to-End NPM Dependencies
+        working-directory: end2end
+        run: npm ci
+
+      - name: Run End-to-End Tests
+        run: cargo leptos end-to-end
+
+      # - name: Build using cargo chef
+      #   run: |
+      #     cargo chef prepare --recipe-path recipe.json
+      #     cargo chef cook --recipe-path recipe.json
+      #     cargo build --release
