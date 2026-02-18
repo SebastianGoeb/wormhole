@@ -53,8 +53,8 @@ jobs:
       - name: Security check
         run: cargo audit
 
-  build-test-deploy:
-    name: Build, Test, Deploy
+  test:
+    name: Tests
     runs-on: ubuntu-latest
 
     steps:
